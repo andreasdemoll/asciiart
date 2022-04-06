@@ -23,8 +23,8 @@ options:
     --pal -p = <p>      ASCII-pharacter palette to be used [default: 2].
     --nhor -n = <n>     Number of chars in horizontal dim [default: 50].
     --chsize -s = <si>  Characters pixels in final image [default: 15].
-    --color -c = <col>  Color of the characters [default: (255, 215, 0)].
-    --whitebg -w        Use white background instead of black.
+    --color -c = <col>  Color of the characters [default: 255, 215, 0].
+    --whitebg -w        Use white backgr. instead of black with white chars.
     --font -f = <font>  Use special font [default: courier-boldregular.ttf].
                         Font needs to be supplied in folder.
 """
@@ -34,7 +34,8 @@ from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw
 from docopt import docopt
-#import pdb
+
+# import pdb
 
 palettes = (
     "$#H&@*+;:-,.  ",
@@ -44,13 +45,15 @@ palettes = (
     "█▇▆▅▄▃▂▁  ",
 )
 
-SCALE = palettes[2]
-NHORIZ = 50
-CHARSIZE = 15
-FONT = "courier-boldregular.ttf"
-COLOR = (255, 215, 0)
-WHITEBG = False
-FILE = "AuN"
+ar = docopt(__doc__, version="asciiart 0.1")
+SCALE = palettes[int(ar["--pal"])]
+NHORIZ = int(ar["--nhor"])
+CHARSIZE = int(ar["--chsize"])
+FONT = ar["--font"]
+COLOR = eval(ar["--color"])
+WHITEBG = ar["--whitebg"]
+FILE = ar["FILE"]
+
 
 def pixel2char(val, scale):
     """convert a pixel value in range 0...255 to a character."""
@@ -63,9 +66,9 @@ def coloredTxt(r, g, b, txt):
     return f"\033[38;2;{r};{g};{b}m{txt}\033[48;2;0;0;0m"
 
 
-def printImage(dat):
+def printImage(img):
     """print the image to the console in b/w or colored."""
-    for row in dat:
+    for row in img:
         print()
         for val in row:
             if np.ndim(val) != 1:  # b&w
@@ -111,7 +114,7 @@ def getWholeImage(dat):
 
 
 def loadAndReshapeImage():
-    im = Image.open("./input/" + FILE + ".jpg")
+    im = Image.open("./" + FILE)
     shape = (NHORIZ, round(NHORIZ / im.size[0] * im.size[1]))
     imBwScaled = np.array(im.resize(shape, Image.ANTIALIAS).convert("L"))
     imColScaled = np.array(im.resize(shape, Image.ANTIALIAS))
@@ -120,12 +123,8 @@ def loadAndReshapeImage():
 
 def main():
     imBwScaled, _ = loadAndReshapeImage()
-    getWholeImage(imBwScaled).save("./output/" + FILE + ".png")
+    getWholeImage(imBwScaled).save(FILE.split(".")[0]+".png")
 
 
 if __name__ == "__main__":
-    args = docopt(__doc__, version='asciiart 0.0')
-    print(args)
-    print(eval(args['--color']))
-
     main()
