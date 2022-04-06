@@ -1,28 +1,56 @@
-#  /|,_ |   _    _   | _   |\/|  ||
-# /-|||(||`(/_(|_\  (|(/_  |  |()||     Feb 2022
+#! /usr/bin/python3
+"""
+    ___   _____ ______________   ___         __ 
+   /   | / ___// ____/  _/  _/  /   |  _____/ /_
+  / /| | \__ \/ /    / / / /   / /| | / ___/ __/
+ / ___ |___/ / /____/ /_/ /   / ___ |/ /  / /_  
+/_/  |_/____/\____/___/___/  /_/  |_/_/   \__/
+
+Andreas de Moll, April 2022
+
+description:
+    Generates ascii-art from images. A given FILE (*.jpg) is
+    converted to an ascii-art *.png and stored. Have fun!
+
+usage:
+    convert.py FILE [options]
+    convert.py (-h | --help)
+    convert.py (-v | --version)
+
+options:
+    --help -h           Show this screen.
+    --version -v        Show version.
+    --pal -p = <p>      ASCII-pharacter palette to be used [default: 2].
+    --nhor -n = <n>     Number of chars in horizontal dim [default: 50].
+    --chsize -s = <si>  Characters pixels in final image [default: 15].
+    --color -c = <col>  Color of the characters [default: (255, 215, 0)].
+    --whitebg -w        Use white background instead of black.
+    --font -f = <font>  Use special font [default: courier-boldregular.ttf].
+                        Font needs to be supplied in folder.
+"""
 
 import numpy as np
 from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw
+from docopt import docopt
+#import pdb
 
-scale0 = """$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~
-		 <>i!lI;:,"^`'.      """
-scale1 = "$#H&@*+;:-,. "
-scale2 = "@%#*+=-:.  "
-scale3 = "BS#@$%*!:.  "
-scale4 = "WB#@$\%wx*i!;:,.  "
-scaleU = "█▇▆▅▄▃▂▁  "
+palettes = (
+    "$#H&@*+;:-,.  ",
+    "@%#*+=-:.  ",
+    "BS#@$%*!:.  ",
+    "WB#@$\%wx*i!;:,.  ",
+    "█▇▆▅▄▃▂▁  ",
+)
 
-FAC = 5
-SCALE = scale3
+SCALE = palettes[2]
+NHORIZ = 50
+CHARSIZE = 15
+FONT = "courier-boldregular.ttf"
+COLOR = (255, 215, 0)
+WHITEBG = False
 FILE = "AuN"
-
-im = Image.open("./input/" + FILE + ".jpg")
-shape = [round(i / FAC) for i in im.size]
-dat = np.array(im.resize(shape, Image.ANTIALIAS).convert("L"))
-datCol = np.array(im.resize(shape, Image.ANTIALIAS))
-
 
 def pixel2char(val, scale):
     """convert a pixel value in range 0...255 to a character."""
@@ -35,49 +63,69 @@ def coloredTxt(r, g, b, txt):
     return f"\033[38;2;{r};{g};{b}m{txt}\033[48;2;0;0;0m"
 
 
-def printImage(dat, scale):
+def printImage(dat):
     """print the image to the console in b/w or colored."""
     for row in dat:
         print()
         for val in row:
             if np.ndim(val) != 1:  # b&w
-                print(f"\033[38;2;255;255;255m{pixel2char(val,scale)}", end="")
+                print(f"\033[38;2;255;255;255m{pixel2char(val,SCALE)}", end="")
             else:  # colored
-                print(coloredTxt(*val, pixel2char(np.mean(val[:3]), scale)), end="")
+                print(
+                    coloredTxt(*val, pixel2char(np.mean(val[:3]), SCALE)),
+                    end="",
+                )
 
 
-def genImage(ch, size, isWhiteBg=False, font="courier-boldregular.ttf", scaleUp=1.2):
+def getCharImage(ch, scaleChar=1.2):
     """
     generate and return image of a character.
-    size: 		size of the returned squarish character image in pixels.
-    isWhiteBg: 	use white or black background.
-    scaleUp:	scale up or down the letter in the returned image. 1 = normal scale.
+    ch:         character shown in image.
+    scaleChar:	scale up or down the character in the image. 1 = normal scale.
     """
-    fnt = ImageFont.truetype(font, int(size * scaleUp))
-    colors = {True: (255, 215, 0), False: (0, 0, 0)}
-    im = Image.new("RGB", (size, size), colors[isWhiteBg])
+    fnt = ImageFont.truetype(FONT, int(CHARSIZE * scaleChar))
+    colors = {True: COLOR, False: (0, 0, 0)}
+    im = Image.new("RGB", (CHARSIZE, CHARSIZE), colors[WHITEBG])
     draw = ImageDraw.Draw(im)
     draw.text(
-        (int(size / 2), int(size / 2)),
+        (int(CHARSIZE / 2), int(CHARSIZE / 2)),
         ch,
         anchor="mm",
         font=fnt,
-        fill=colors[not isWhiteBg],
+        fill=colors[not WHITEBG],
     )
     return im
 
 
-def genWholeImage(dat, size, scale=scale3):
-    complete = Image.new("RGB", (size * dat.shape[1], size * dat.shape[0]), "black")
-    sc = scale if isWhiteBg else scale[::-1]
+def getWholeImage(dat):
+    complete = Image.new(
+        "RGB", (CHARSIZE * dat.shape[1], CHARSIZE * dat.shape[0]), "black"
+    )
+    sc = SCALE if WHITEBG else SCALE[::-1]
     for row in range(dat.shape[0]):
         for col in range(dat.shape[1]):
             ch = pixel2char(dat[row, col], sc)
-            im = genImage(ch, size)
-            complete.paste(im, (col * size, row * size))
+            im = getCharImage(ch)
+            complete.paste(im, (col * CHARSIZE, row * CHARSIZE))
     return complete
 
 
-# genImage('@',20,True).show()
-genWholeImage(dat, 15, False, SCALE).save("./output/" + FILE + ".png")
-# printColoredImage(datCol)
+def loadAndReshapeImage():
+    im = Image.open("./input/" + FILE + ".jpg")
+    shape = (NHORIZ, round(NHORIZ / im.size[0] * im.size[1]))
+    imBwScaled = np.array(im.resize(shape, Image.ANTIALIAS).convert("L"))
+    imColScaled = np.array(im.resize(shape, Image.ANTIALIAS))
+    return imBwScaled, imColScaled
+
+
+def main():
+    imBwScaled, _ = loadAndReshapeImage()
+    getWholeImage(imBwScaled).save("./output/" + FILE + ".png")
+
+
+if __name__ == "__main__":
+    args = docopt(__doc__, version='asciiart 0.0')
+    print(args)
+    print(eval(args['--color']))
+
+    main()
