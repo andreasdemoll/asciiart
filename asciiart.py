@@ -35,8 +35,6 @@ from PIL import ImageFont
 from PIL import ImageDraw
 from docopt import docopt
 
-# import pdb
-
 PALETTES = (
     "$#H&@*+;:-,.  ",
     "@%#*+=-:.  ",
@@ -56,7 +54,7 @@ args = docopt(__doc__, version="asciiart 0.1")
 
 def checkAndSetPar():
     """
-    Assert parameter values and write to global paramter object. 
+    Assert parameter values and write to global paramter object.
     Wrong types or impossible type convertions will throw exceptions
     that are not caught here.
     """
@@ -74,12 +72,11 @@ def checkAndSetPar():
     assert tmp > 0, "arg of --chsize must be a positive integer"
     P.CHARSIZE = tmp
 
-    P.FONT = args["--font"]
-
     tmp = eval(args["--color"])
     assert min(tmp) >= 0 and max(tmp) <= 255, "--r,g,b must be within 0...255"
     P.COLOR = tmp
 
+    P.FONT = args["--font"]
     P.WHITEBG = args["--whitebg"]
     P.FILE = args["FILE"]
 
@@ -165,8 +162,8 @@ def loadAndReshapeImage():
 
 
 def main():
-    checkAndSetPar()
     """main function generating and saving the asciiart."""
+    checkAndSetPar()
     imBwScaled, _ = loadAndReshapeImage()
     getWholeImage(imBwScaled).save(P.FILE.split(".")[0] + ".png")
 
