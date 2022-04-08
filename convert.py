@@ -13,9 +13,9 @@ description:
     converted to an ascii-art *.png and stored. Have fun!
 
 usage:
-    convert.py FILE [options]
-    convert.py (-h | --help)
-    convert.py (-v | --version)
+    asciiart.py FILE [options]
+    asciiart.py (-h | --help)
+    asciiart.py (-v | --version)
 
 options:
     --help -h           Show this screen.
@@ -37,7 +37,7 @@ from docopt import docopt
 
 # import pdb
 
-palettes = (
+PALETTES = (
     "$#H&@*+;:-,.  ",
     "@%#*+=-:.  ",
     "BS#@$%*!:.  ",
@@ -45,14 +45,43 @@ palettes = (
     "█▇▆▅▄▃▂▁  ",
 )
 
-ar = docopt(__doc__, version="asciiart 0.1")
-SCALE = palettes[int(ar["--pal"])]
-NHORIZ = int(ar["--nhor"])
-CHARSIZE = int(ar["--chsize"])
-FONT = ar["--font"]
-COLOR = eval(ar["--color"])
-WHITEBG = ar["--whitebg"]
-FILE = ar["FILE"]
+
+class Par(object):
+    pass
+
+
+P = Par()
+args = docopt(__doc__, version="asciiart 0.1")
+
+
+def checkAndSetPar():
+    """
+    Assert parameter values and write to global paramter object. 
+    Wrong types or impossible type convertions will throw exceptions
+    that are not caught here.
+    """
+    tmp = int(args["--pal"])
+    assert tmp in range(
+        len(PALETTES)
+    ), f"arg of --pal must be in range 0...{len(PALETTES)-1}"
+    P.SCALE = PALETTES[tmp]
+
+    tmp = int(args["--nhor"])
+    assert tmp > 0, "arg of --nhor must be a positive integer!"
+    P.NHORIZ = tmp
+
+    tmp = int(args["--chsize"])
+    assert tmp > 0, "arg of --chsize must be a positive integer"
+    P.CHARSIZE = tmp
+
+    P.FONT = args["--font"]
+
+    tmp = eval(args["--color"])
+    assert min(tmp) >= 0 and max(tmp) <= 255, "--r,g,b must be within 0...255"
+    P.COLOR = tmp
+
+    P.WHITEBG = args["--whitebg"]
+    P.FILE = args["FILE"]
 
 
 def pixel2char(val, scale):
@@ -72,10 +101,12 @@ def printImage(img):
         print()
         for val in row:
             if np.ndim(val) != 1:  # b&w
-                print(f"\033[38;2;255;255;255m{pixel2char(val,SCALE)}", end="")
+                print(
+                    f"\033[38;2;255;255;255m{pixel2char(val,P.SCALE)}", end=""
+                )
             else:  # colored
                 print(
-                    coloredTxt(*val, pixel2char(np.mean(val[:3]), SCALE)),
+                    coloredTxt(*val, pixel2char(np.mean(val[:3]), P.SCALE)),
                     end="",
                 )
 
@@ -85,45 +116,59 @@ def getCharImage(ch, scaleChar=1.2):
     generate and return image of a character.
     ch:         character shown in image.
     scaleChar:	scale up or down the character in the image. 1 = normal scale.
+    im:         image containing the character.
     """
-    fnt = ImageFont.truetype(FONT, int(CHARSIZE * scaleChar))
-    colors = {True: COLOR, False: (0, 0, 0)}
-    im = Image.new("RGB", (CHARSIZE, CHARSIZE), colors[WHITEBG])
+    fnt = ImageFont.truetype(P.FONT, int(P.CHARSIZE * scaleChar))
+    colors = {True: P.COLOR, False: (0, 0, 0)}
+    im = Image.new("RGB", (P.CHARSIZE, P.CHARSIZE), colors[P.WHITEBG])
     draw = ImageDraw.Draw(im)
     draw.text(
-        (int(CHARSIZE / 2), int(CHARSIZE / 2)),
+        (int(P.CHARSIZE / 2), int(P.CHARSIZE / 2)),
         ch,
         anchor="mm",
         font=fnt,
-        fill=colors[not WHITEBG],
+        fill=colors[not P.WHITEBG],
     )
     return im
 
 
 def getWholeImage(dat):
+    """
+    concatenate a complete image out ouf single character Images.
+    Each pixel of dat will be converted to a single char image.
+    dat:        the image data as numpy string that will be transformed
+                to the asciiart.
+    complete:   the asciiart image
+    """
     complete = Image.new(
-        "RGB", (CHARSIZE * dat.shape[1], CHARSIZE * dat.shape[0]), "black"
+        "RGB", (P.CHARSIZE * dat.shape[1], P.CHARSIZE * dat.shape[0]), "black"
     )
-    sc = SCALE if WHITEBG else SCALE[::-1]
+    sc = P.SCALE if P.WHITEBG else P.SCALE[::-1]
     for row in range(dat.shape[0]):
         for col in range(dat.shape[1]):
             ch = pixel2char(dat[row, col], sc)
             im = getCharImage(ch)
-            complete.paste(im, (col * CHARSIZE, row * CHARSIZE))
+            complete.paste(im, (col * P.CHARSIZE, row * P.CHARSIZE))
     return complete
 
 
 def loadAndReshapeImage():
-    im = Image.open("./" + FILE)
-    shape = (NHORIZ, round(NHORIZ / im.size[0] * im.size[1]))
+    """
+    load and reshape image to given horizontal number of characters.
+    Returns 2 version, one b/w and one colored for future colored asciiarts.
+    """
+    im = Image.open("./" + P.FILE)
+    shape = (P.NHORIZ, round(P.NHORIZ / im.size[0] * im.size[1]))
     imBwScaled = np.array(im.resize(shape, Image.ANTIALIAS).convert("L"))
     imColScaled = np.array(im.resize(shape, Image.ANTIALIAS))
     return imBwScaled, imColScaled
 
 
 def main():
+    checkAndSetPar()
+    """main function generating and saving the asciiart."""
     imBwScaled, _ = loadAndReshapeImage()
-    getWholeImage(imBwScaled).save(FILE.split(".")[0]+".png")
+    getWholeImage(imBwScaled).save(P.FILE.split(".")[0] + ".png")
 
 
 if __name__ == "__main__":
