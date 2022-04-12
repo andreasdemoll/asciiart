@@ -10,8 +10,8 @@ Installation
 ------------
 * Clone this repository via `git clone https://github.com/andreasdemoll/asciiart` or simply download it.
 * Install virtual environments via `pip install virtualenv` if not existing.
-* Navigate into that folder and create a virutal environment via `virtualenv venv`.
-* Activate the environment via `source venv/bin/activate`
+* Navigate into that folder and create a virutal environment via `python3 -m venv env`.
+* Activate the environment via `source env/bin/activate`
 * Install required packages via `pip install -r requirements.txt`
 * Deactivate environment after use via `deactivate`
 
@@ -21,7 +21,7 @@ Example calls
 * `python3 asciiart.py imag/Emil.jpg --nhor 150` will convert to an image with 150 characters in the horizontal dimension.
 * `python3 asciiart.py imag/Emil.jpg --nhor 150 --color 0,255,0` will convert as above but in green.
 
-> Activate virtual environment first via `source venv/bin/activate`, deactivate after use by `deactivate`.
+> Activate virtual environment first via `source env/bin/activate`, deactivate after use by `deactivate`.
 
 > Call `python3 asciiart.py --help` for all possible options.
 
